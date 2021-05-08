@@ -1,38 +1,114 @@
 import argparse
 from random import randrange, getrandbits
+from hashlib import sha3_512
 import pathlib
 import os
 
 def config_argparse():
     parser = argparse.ArgumentParser(description='Generates key and signs messages using RSA.')
-    parser.add_argument('-k', action = 'store_true', help = 'Generates private key (private.key) and public key (public.key) in keys folder')
+    parser.add_argument('-g', action = 'store_true', help = 'Generates private key (private.key) and public key (public.key) in keys folder')
+    parser.add_argument('-m', nargs = 1, metavar = 'message', dest = 'message')
+    parser.add_argument('-s', nargs = 1, metavar = 'signature', dest = 'signature')
+    parser.add_argument('-k', nargs = 1, metavar = 'key', dest = 'key')
     return parser
 
 def main():
     parser = config_argparse()
     arguments = parser.parse_args()
 
-    if (arguments.k):
+    if arguments.g:
+        if (arguments.message or arguments.key or arguments.signature):
+            raise 'You can\'t pass other arguments when using -g'
         generate_keys()
+    elif arguments.message and not arguments.signature:
+        if (not arguments.key):
+            raise 'You must specify a key to sign your message'
+
+        message = None
+
+        with open(arguments.message[0], 'r', encoding = 'utf-8') as file:
+            message = file.read()
+
+        key = None
+
+        with open(arguments.key[0], 'r', encoding = 'utf-8') as file:
+            first_line = file.readline().replace('\r', '\n').replace('\n', '').split('=')
+            second_line = file.readline().replace('\r', '\n').replace('\n', '').split('=')
+
+            if second_line[0] != 'd':
+                raise 'You must use a private to sign the message'
+            
+            key = (first_line[1], second_line[1])
+
+        sign_message(message, key)
+    elif arguments.signature:
+        if (not arguments.key):
+            raise 'You must specify a key to verify your signature'
+
+        if (not arguments.message):
+            raise 'You must specify a message to verify the signature'
+
+        message = None
+
+        with open(arguments.message[0], 'r', encoding = 'utf-8') as file:
+            message = file.read()
+
+        key = None
+
+        with open(arguments.key[0], 'r', encoding = 'utf-8') as file:
+            first_line = file.readline().replace('\r', '\n').replace('\n', '').split('=')
+            second_line = file.readline().replace('\r', '\n').replace('\n', '').split('=')
+
+            if second_line[0] != 'e':
+                raise 'You must use a public key to verify your signature'
+            
+            key = (first_line[1], second_line[1])
+
+        signature = None
+
+        with open(arguments.signature[0], 'r', encoding = 'utf-8') as file:
+            signature = file.read()
+
+        verify_signature(message, key, signature)
 
     print('Done! Press Enter to close.')
     input()
 
+def verify_signature(message, key, signature):
+    hash = int.from_bytes(sha3_512(message.encode('utf-8')).digest(), byteorder = 'big')
+    hashFromSignature = pow(int(signature), int(key[1]), int(key[0]))
+
+    if hash == hashFromSignature:
+        print('A mensagem está assinada corretamente.')
+    else:
+        print('A mensagem não está assinada corretamente.')
+
+def sign_message(message, key):
+    hash = int.from_bytes(sha3_512(message.encode('utf-8')).digest(), byteorder = 'big')
+    signature = pow(hash, int(key[1]), int(key[0]))
+
+    signature_path = pathlib.Path('signature.txt').absolute()
+    print(f"Writing signature to {signature_path}")
+
+    with open(signature_path, 'w', encoding = 'utf-8') as file:
+        file.write(f"{signature}")
+
 def generate_keys():
+    print ('generating p and q...')
     p = generate_prime_number()
     q = generate_prime_number()
     n = p * q
         
     print('Generating e that is relatively prime to (p-1)*(q-1)...')
     while True:
-        e = randrange(2 ** 0, 2 ** 16)
+        e = randrange(2 ** 1, 2 ** 16)
         if gcd(e, (p - 1) * (q - 1)) == 1:
             break
     
     print('Calculating d that is mod inverse of e...')
     d = findModInverse(e, (p - 1) * (q - 1))
 
-    folder_path = pathlib.Path('keys')
+    folder_path = pathlib.Path('keys').absolute()
    
     if (not os.path.exists(folder_path)):
         os.makedirs(folder_path)
