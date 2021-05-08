@@ -1,1 +1,1 @@
-.\venv\Scripts\python.exe -m signingrsa
+.\venv\Scripts\python.exe -m signingrsa $args

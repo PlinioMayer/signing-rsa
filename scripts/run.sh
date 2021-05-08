@@ -1,1 +1,1 @@
-./lvenv/bin/python3 -m signingrsa
+./lvenv/bin/python3 -m signingrsa $*
