@@ -2,7 +2,15 @@ import argparse
 from random import randrange, getrandbits
 
 def generate_keys():
-    print(generate_prime_number())
+    print('Generating keys:')
+    p = generate_prime_number()
+    q = generate_prime_number()
+
+    n = p * q
+    e = 65537
+    
+
+
 
 def config_argparse():
     parser = argparse.ArgumentParser(description='Generates key and signs messages using RSA.')
