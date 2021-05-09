@@ -38,7 +38,7 @@ def main():
 
             if not arguments.signature and second_line[0] != 'd':
                 raise 'You must use a private key to sign the message'
-            elif second_line[0] != 'e':
+            elif arguments.signature and second_line[0] != 'e':
                 raise 'You must use a public key to verify the message'
             
             key = (first_line[1], second_line[1])
