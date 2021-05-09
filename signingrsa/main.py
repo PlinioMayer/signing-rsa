@@ -64,8 +64,6 @@ def verify_signature(message, key, signature):
     hash = int.from_bytes(sha3_256(message).digest(), byteorder = 'big')
     hashFromSignature = pow(int(signature), int(key[1]), int(key[0]))
 
-    print(hash)
-    print(int.from_bytes(oaep_decode(hashFromSignature), byteorder = 'big'))
     if hash == int.from_bytes(oaep_decode(hashFromSignature), byteorder = 'big'):
         print('Valid signature.')
     else:
