@@ -1,6 +1,7 @@
 import argparse
 from random import randrange, getrandbits
 from hashlib import sha3_512
+import base64
 import pathlib
 import os
 
@@ -20,14 +21,14 @@ def main():
         if (arguments.message or arguments.key or arguments.signature):
             raise 'You can\'t pass other arguments when using -g'
         generate_keys()
-    elif arguments.message and not arguments.signature:
+    elif arguments.message:
         if (not arguments.key):
             raise 'You must specify a key to sign your message'
 
         message = None
 
-        with open(arguments.message[0], 'r', encoding = 'utf-8') as file:
-            message = file.read()
+        with open(arguments.message[0], 'rb') as file:
+            message = base64.b64encode(file.read())
 
         key = None
 
@@ -35,47 +36,30 @@ def main():
             first_line = file.readline().replace('\r', '\n').replace('\n', '').split('=')
             second_line = file.readline().replace('\r', '\n').replace('\n', '').split('=')
 
-            if second_line[0] != 'd':
-                raise 'You must use a private to sign the message'
+            if not arguments.signature and second_line[0] != 'd':
+                raise 'You must use a private key to sign the message'
+            elif second_line[0] != 'e':
+                raise 'You must use a public key to verify the message'
             
             key = (first_line[1], second_line[1])
 
-        sign_message(message, key)
-    elif arguments.signature:
-        if (not arguments.key):
-            raise 'You must specify a key to verify your signature'
+        if arguments.signature:
+            signature = None
 
-        if (not arguments.message):
-            raise 'You must specify a message to verify the signature'
+            with open(arguments.signature[0], 'r', encoding = 'utf-8') as file:
+                signature = file.read()
 
-        message = None
-
-        with open(arguments.message[0], 'r', encoding = 'utf-8') as file:
-            message = file.read()
-
-        key = None
-
-        with open(arguments.key[0], 'r', encoding = 'utf-8') as file:
-            first_line = file.readline().replace('\r', '\n').replace('\n', '').split('=')
-            second_line = file.readline().replace('\r', '\n').replace('\n', '').split('=')
-
-            if second_line[0] != 'e':
-                raise 'You must use a public key to verify your signature'
-            
-            key = (first_line[1], second_line[1])
-
-        signature = None
-
-        with open(arguments.signature[0], 'r', encoding = 'utf-8') as file:
-            signature = file.read()
-
-        verify_signature(message, key, signature)
+            verify_signature(message, key, signature)
+        else:
+            sign_message(message, key)
+    else:
+        print('Nothing to do.')
 
     print('Done! Press Enter to close.')
     input()
 
 def verify_signature(message, key, signature):
-    hash = int.from_bytes(sha3_512(message.encode('utf-8')).digest(), byteorder = 'big')
+    hash = int.from_bytes(sha3_512(message).digest(), byteorder = 'big')
     hashFromSignature = pow(int(signature), int(key[1]), int(key[0]))
 
     if hash == hashFromSignature:
@@ -84,7 +68,7 @@ def verify_signature(message, key, signature):
         print('A mensagem não está assinada corretamente.')
 
 def sign_message(message, key):
-    hash = int.from_bytes(sha3_512(message.encode('utf-8')).digest(), byteorder = 'big')
+    hash = int.from_bytes(sha3_512(message).digest(), byteorder = 'big')
     signature = pow(hash, int(key[1]), int(key[0]))
 
     signature_path = pathlib.Path('signature.txt').absolute()
