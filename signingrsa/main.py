@@ -63,9 +63,9 @@ def verify_signature(message, key, signature):
     hashFromSignature = pow(int(signature), int(key[1]), int(key[0]))
 
     if hash == hashFromSignature:
-        print('A mensagem está assinada corretamente.')
+        print('Valid signature.')
     else:
-        print('A mensagem não está assinada corretamente.')
+        print('invalid signature.')
 
 def sign_message(message, key):
     hash = int.from_bytes(sha3_512(message).digest(), byteorder = 'big')
