@@ -1,6 +1,7 @@
 import argparse
-from random import randrange, getrandbits
-from hashlib import sha3_512
+from random import randrange, getrandbits, choice
+from string import ascii_letters
+from hashlib import sha3_512, sha3_256
 import base64
 import pathlib
 import os
@@ -53,22 +54,25 @@ def main():
         else:
             sign_message(message, key)
     else:
+        oaep_encode(sha3_256(b'').digest())
         print('Nothing to do.')
 
     print('Done! Press Enter to close.')
     input()
 
 def verify_signature(message, key, signature):
-    hash = int.from_bytes(sha3_512(message).digest(), byteorder = 'big')
+    hash = int.from_bytes(sha3_256(message).digest(), byteorder = 'big')
     hashFromSignature = pow(int(signature), int(key[1]), int(key[0]))
 
-    if hash == hashFromSignature:
+    print(hash)
+    print(int.from_bytes(oaep_decode(hashFromSignature), byteorder = 'big'))
+    if hash == int.from_bytes(oaep_decode(hashFromSignature), byteorder = 'big'):
         print('Valid signature.')
     else:
         print('invalid signature.')
 
 def sign_message(message, key):
-    hash = int.from_bytes(sha3_512(message).digest(), byteorder = 'big')
+    hash = int.from_bytes(oaep_encode(sha3_256(message).digest()), byteorder = 'big')
     signature = pow(hash, int(key[1]), int(key[0]))
 
     signature_path = pathlib.Path('signature.txt').absolute()
@@ -161,6 +165,26 @@ def findModInverse(a, m):
         q = u3 // v3
         v1, v2, v3, u1, u2, u3 = (u1 - q * v1), (u2 - q * v2), (u3 - q * v3), v1, v2, v3
     return u1 % m
+
+def xor(a, b):
+    assert len(a) == len(b)
+    return bytearray([ aa ^ bb for aa, bb in zip(a, b)])
+
+def oaep_encode(message):
+    mm = message + (b'\x00' * 32)
+    r = ''.join(choice(ascii_letters) for i in range(64)).encode('ascii')
+    G = sha3_512(r).digest()
+    X = xor(mm, G)
+    H = sha3_512(X).digest()
+    Y = xor(r, H)
+
+    return X + Y
+
+def oaep_decode(signature):
+    XY = int(signature).to_bytes(128, 'big')
+    r = xor(XY[64:], sha3_512(XY[:64]).digest())
+    mm = xor(XY[:64], sha3_512(r).digest())
+    return mm[0:32]
 
 if __name__ == '__main__':
    main()
